@@ -1,0 +1,67 @@
+
+## Course Project 1
+
+Reading CSV data in R
+
+```{r read}
+activityDT <- data.table::fread(input = "activity.csv")
+library(ggplot2)
+library(data.table)
+library(knitr)
+```
+
+**Mean total number of steps taken per day (with missing values)**
+
+```{r mmi1}
+total <- tapply(activityDT$steps, activityDT$date, sum)
+date <- names(total)
+steps <- data.frame(total)[[1]]
+res <- data.frame(date, steps)
+ggplot(res, aes(x = steps)) + geom_histogram(fill = "red", binwidth = 1000) + labs(title = "Steps per Day", x = "steps", y = "frequency")
+mmi <- summary(res$steps, na.rm = TRUE)[c(3,4)]
+mmi <- data.table(mmi[[1]], mmi[[2]])
+colnames(mmi) <- c("Mean", "Median")
+kable(mmi, caption = "Mean and Median with missing values")
+```
+
+```{r mmi2}
+intervalDT <- activityDT[, lapply(.SD, mean, na.rm = TRUE), .SDcols = c("steps") ,by = .(interval)]
+ggplot(intervalDT, aes(x = interval , y = steps)) + geom_line(color = "red", size = 0.2) + labs(title = "Average daily activity pattern", y = "Average Steps per Day")
+kable(intervalDT[steps == max(steps)], caption = "Interval with maximum steps")
+```
+
+
+```{r datacleaning}
+activityDT[is.na(steps), .N]
+med <- data.table(median(activityDT$steps, na.rm = TRUE))
+colnames(med) <-c("steps")
+activityDT[is.na(steps), "steps"] <- med
+data.table::fwrite(activityDT, file = "cleanData.csv", quote = FALSE)
+```
+
+**Mean total number of steps taken per day (without missing values)**
+
+```{r mmf1}
+totalSteps <- activityDT[, lapply(.SD, sum), .SDcols = c("steps"), by = .(date)]
+ggplot(totalSteps, aes(x = steps)) + geom_histogram(fill = "red", binwidth = 1000) + labs(title = "Steps per Day", x = "steps", y = "frequency")
+mmf <- data.table(mean(totalSteps$steps), median(totalSteps$steps))
+colnames(mmf) <- c("Mean", "Median")
+```
+
+**Comparing mean and medians after and before adding the missing values**
+
+```{r echo=FALSE}
+kable(rbind(mmf, mmi), caption = "1st row - after adding missing values, 2nd row - with missing values")
+```
+
+```{r wdoe}
+activityDT$day <- weekdays(as.Date(activityDT$date, format = "%Y-%m-%d"))
+activityDT$weekendorday <- "weekday"
+activityDT[grep("Saturday|Sunday", activityDT$day)]$weekendorday <- "weekend"
+activityDT$weekendorday <- as.factor(activityDT$weekendorday)
+```
+
+```{r wdoegraph}
+intervalDT <- activityDT[, lapply(.SD, mean, na.rm = TRUE), .SDcols = c("steps") ,by = .(interval, weekendorday)]
+ggplot(intervalDT, aes(x = interval , y = steps, col = weekendorday)) + geom_line(size = 0.05) + labs(title = "Average daily activity pattern by weekend or weekday", y = "Average Steps per Day") + facet_wrap(facets = .~weekendorday, ncol = 1)
+```
