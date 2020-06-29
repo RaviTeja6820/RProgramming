@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/631059/61e9c7ce1127434ca48ea2b902f942a2
+bundleId: https://api.rpubs.com/api/v1/document/631059/61e9c7ce1127434ca48ea2b902f942a2
+url: http://rpubs.com/raviteja6820/631059/edit
+when: 1592825903.18541

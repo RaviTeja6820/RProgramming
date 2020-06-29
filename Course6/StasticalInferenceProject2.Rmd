@@ -1,0 +1,112 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+<h3 position = "right">Statistical Inference Project 2</h3>
+by, <h4><b><i>Ravi Teja L</i></b></h4>
+*22-06-2020*
+
+</br>
+<h2 style = "background-color :#AFAFAF; color: black"><center>Part-2</center></h2>
+</br>
+<h3><center><b>
+Examining ToothGrowth In R</b></center></h3>
+</br>
+
+## Instructions
+
+1. Load the ToothGrowth data and perform some basic exploratory data analyses
+2. Provide a basic summary of the data.
+3. Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. (Only use the techniques from class, even if there's other approaches worth considering)
+4. State your conclusions and the assumptions needed for your conclusions.
+
+## Loading Libraries
+
+```{r load , results = 'hide'}
+library("data.table")
+library("ggplot2")
+library("dplyr")
+library(tidyr)
+library(ggpubr)
+```
+
+# Load the ToothGrowth data and perform some basic exploratory data analyses
+
+```{r load}
+data("ToothGrowth")
+```
+
+```{r modify}
+ToothGrowth <- data.table(ToothGrowth)
+plot(x = ToothGrowth$dose, y = ToothGrowth$len, xlab = "Dose", ylab = "Lengths", col = ToothGrowth$supp)
+legend(0.5, 34, legend=unique(ToothGrowth$supp), col = c("red", "black"), lty=1:2, cex=0.8)
+```
+
+From the graph, it can be observed that as the dosage increases tooth length increases.But it also appears that OJ tooth delivers more tooth growth even at lower dosages
+
+# Basic summary of Data
+
+```{r}
+summary(ToothGrowth)
+head(ToothGrowth)
+```
+
+Examining Dose and Supplement
+```{r}
+ToothGrowth[, .(meanlen = mean(len), Count = .N), by = .(dose,supp)]
+```
+
+# Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose
+
+
+By the summary the main relation camparision is between the usages of supplement to tooth lengths.
+So the tests are to be made on supplements and tooth length for different type of dosages
+```{r}
+lowdose <- ToothGrowth[ToothGrowth[, dose == 0.5]]
+middose <- ToothGrowth[ToothGrowth[, dose == 1.0]]
+highdose <- ToothGrowth[ToothGrowth[, dose == 2.0]]
+```
+
+```{r}
+t.test(ToothGrowth$len ~ ToothGrowth$supp)
+```
+
+The above test does show a wide confidence interval but the significance of p-value shows higher value so we can conclude and donot reject Null Hypothesis.
+
+```{r}
+t.test(lowdose$len ~ lowdose$supp, paired = FALSE)
+```
+
+From the above test we can find a lot of variation between means of two supplements and low p-value.
+That definitely concludes the fact that OJ shows better results that VC
+
+```{r}
+t.test(middose$len ~ middose$supp, paired = FALSE)
+```
+
+From the above test we can find a lot of variation between means of two supplements and low p-value.
+That definitely concludes the fact that OJ shows better results that VC
+
+```{r}
+t.test(highdose$len ~ highdose$supp, paired = FALSE)
+```
+
+From the above test we can find very low variation between two supplements.
+Here we can conclude that OJ and VC show similar results in higher dosages
+
+# Conclusions and Assumptions
+
+Based off this data we can conclude the following:
+
+As the dosage increases, tooth length increases regardless of what kind of supplement we use.
+At the 0.5 mg and 1.0 mg dosage the OJ supplement method provides more tooth growth than that of VC Supplement
+At the 2.0 mg dosage, there is no significant difference between the OJ and VC supplement methods.
+
+**Assumptions**
+
+We assume that the measurements are not paired.
+We assume the populations are independent, that there was no crossover between the subjects and dosage.
+
+On an overall scenario we can consider that OJ performs better than VC in most of the cases
+
