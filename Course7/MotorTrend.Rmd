@@ -1,0 +1,241 @@
+---
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+# **Motor Trend Analysis - Effect of Transmission on Mileage**
+
+***L N S S Ravi Teja***  
+***10th July 2020***
+
+### **Executive Summary**
+
+The goal of this project is to study the influence of variables from the mtcars dataset.Specifically we want to learn about how the mpg(Miles per gallon) is related to other variable predictors, in particular the transmission type(i.e., am(automatic or manual)).
+The main objective is not to build the perfect model but to explain the interaction between the predictors and response as good as possible.
+### **1 : Synopsis**
+
+#### Following the main aspects that we are going to explore :
+
+* “Is an automatic or manual transmission better for MPG”
+* "Quantify the MPG difference between automatic and manual transmissions"
+
+### **2 : Data Processing**
+
+#### 2.1 : Data Loading
+Load the data from the mtcars.
+```{r dl}
+library("data.table")
+library("ggplot2")
+library("tidyr")
+library("knitr")
+data(mtcars)
+
+#converting to data.table
+mtcars <- as.data.table(mtcars)
+
+#Dimensions of data
+dim(mtcars)
+```
+
+#### 2.2 : Find the column in data.table
+
+```{r names}
+names(mtcars)
+```
+
+Format of columns from ***?mtcars***
+
+1	mpg -	Miles/(US) gallon  
+2	cyl -	Number of cylinders  
+3	disp - Displacement (cu.in.)  
+4	hp - Gross horsepower  
+5	drat - Rear axle ratio  
+6	wt - Weight (1000 lbs)  
+7	qsec - 1/4 mile time  
+8	vs - Engine (0 = V-shaped, 1 = straight)  
+9	am - Transmission (0 = automatic, 1 = manual)  
+10 gear - Number of forward gears  
+11 carb - Number of carburetors  
+
+#### 2.3 : Data Subsetting  
+As the main objective is related to transmission and mileage we subset the data to suit the requirements for Exploratory Data Analysis
+```{r subset}
+mtcarsDT <- mtcars[, c("mpg", "am")]
+summary(mtcarsDT)
+```
+
+### **3: Data Analysis**
+
+#### 3.1 : Boxplot between Gas Mileage(mpg) and Transmission(am)
+
+```{r boxplot}
+mtcarsDT$am <- factor(mtcarsDT$am)
+g <- ggplot(mtcarsDT, aes(x = am, y = mpg, fill = am)) + geom_boxplot()
+g <- g + scale_fill_discrete(name = "Transmission", labels = c("Automatic", "Manual"))
+g <- g + scale_x_discrete(labels = c("Automatic", "Manual"))
+g <- g + theme(plot.title = element_text(color = "DarkGreen", size = 15, face = "bold"))
+g <- g + labs(x = "Automatic or Manual", y = "Miles /(US) gallon", title = "Testing the impact of tranmission on Mileage")
+g
+```
+
+The above analysis definitely provides us the information that the transmissions have a large effect in mileages of cars.
+And Manual transmissions have better averages and provide high gas mileage than that of Automatic transmission.We can also get that the positions of means of the 2 sets are having a big gap between them.
+
+* **for automatic transmissions** the median is at the middle of the data i.e. the data is simmetrical along the median.
+
+* **for manual transmissions** the median is on the lower side of the data i.e. the data is largely dispersed along the higher values.
+
+```{r}
+kable(mtcars[, .(mean = mean(mpg)), by = .(am)])
+```
+
+### **4 : Modelling the Data**
+
+To model data we can follow 2 types of approaches  
+1 Forward Selection  
+2 Backward Elimination  
+
+Before Selecting any type of model we need to analyse the correlation between the predictors such that the variables that we select doesnot cause any biased predictions
+
+```{r}
+corrplot::corrplot(cor(mtcars), method = "number")
+```
+
+#### 4.1 : Basic Linear Model
+
+Lets create a basic linear model mpg vs am
+
+```{r flm}
+fit1 <- lm(mpg ~ am, mtcars)
+summary(fit1)
+```
+
+We can see the adjusted R Square being approximately 33% which means that the transmission doesnot completely describe the mileage of motor cars.So there may be other variables that accompany the transmission system.
+
+Here we are trying to implement ***Backward Elimination Model*** which basically states that we start with all the predictors first and then remove the useless predictor based on proofs.
+Since we already made a correlation matrix it makes the steps much easier.
+
+#### 4.2 : All Predictor Multi Variable Regression Model
+
+Lets now include all predictors in the model that explains mpg.
+```{r mvrm}
+fit2 <- lm(mpg ~ ., mtcars)
+summary(fit2)
+```
+
+As we can see that the Adjusted R square is much higher and thats the proof that other variables have a certain impact on mpg.
+
+This is the point we have the need of multicollinearity among the variables so as to eliminate the variables.
+
+#### 4.3 : Eliminating disp, vs and hp as they have high collinearity and depends on other variables
+
+```{r}
+fit3 <- lm(mpg ~ . - disp-vs-hp, mtcars)
+summary(fit3)
+```
+
+As we can see that the Adjusted R square is higher than that of previous model providing us the information that we are going in the right direction.(80.7% to 82.2%)
+
+#### 4.4 : Let's test by eliminating drat
+
+drat has positive correlaton between mpg and as well as "am" so we have to eliminate it.
+
+```{r}
+fit4 <- lm(mpg ~ . - disp-vs-hp-drat, mtcars)
+summary(fit4)
+```
+
+As we can see that the Adjusted R square is slightly higher than that of previous model providing us the information that we are going in the right direction.(82.2% to 82.7)
+
+#### 4.5 : Let's test by eliminating carb
+
+carb has negative correlation with mpg which is not a significant choice out of them but it has almost no correlation with "am" so lets test it.
+
+```{r}
+fit5 <- lm(mpg ~ . - disp-vs-hp-drat-carb, mtcars)
+summary(fit5)
+```
+
+As we can see that the Adjusted R square is lesser than that of previous model providing us the information that we are not going in the right direction.
+Since excluding carb reduces the Adjusted R square lets check other variables.
+
+#### 4.6 : Let's test by eliminating gear
+
+
+```{r}
+fit6 <- lm(mpg ~ . - disp-vs-hp-drat-gear, mtcars)
+summary(fit6)
+```
+
+As we can see that the Adjusted R square is higher than that of previous model fit(fit4) providing us the information that we are going in the right direction.(82.7% to 83.2%)
+Here we tried to exclude gear because it hase very high p-value and not significant
+
+#### 4.7 : Let's test by eliminating cyl
+
+cyl has highly negative correlation with mpg and disturbs our analysis on automatic and manual transmissions.
+
+```{r}
+fit7 <- lm(mpg ~ . - disp-vs-hp-drat-gear-cyl, mtcars)
+summary(fit7)
+```
+
+As we can see that the Adjusted R square is higher than that of previous model fit providing us the information that we are going in the right direction.(83.2% to 83.7%)
+Here we tried to exclude cyl because it hase very high p-value and not significant
+
+#### 4.8 : Let's test by eliminating carb
+
+carb has negetive correlation and as well as not having any significant p-value (>0.05)
+
+```{r}
+fit8 <- lm(mpg ~ . - disp-vs-hp-drat-gear-cyl-carb, mtcars)
+summary(fit8)
+```
+
+Though we find that the RSquare value is reduced we have significant P-values as well as F-Statistic that the above model is proves our statements.
+
+The model is now settled at "wt", "qsec", "am"
+
+```{r}
+mtcarsDT <- mtcars[, c("mpg", "am", "qsec", "wt")]
+plot(mtcarsDT)
+corrplot::corrplot(cor(mtcarsDT), method = "number")
+```
+
+Here there is significant correlation between wt and am but that doesn't effect our analysis similarly to breath mint and smoke effect to lungs damage.
+
+
+### **5 : Residual Analysis**
+
+#### 5.1 : Fitted vs Residual Values
+```{r}
+finalFit <- lm(mpg ~ am + wt + qsec, mtcars)
+par(mfrow=c(2,2)) 
+plot(finalFit)
+```
+
+#### 5.2 : Residuals vs Each predictor
+```{r}
+par(mfrow=c(2,2)) 
+plot(resid(finalFit) ~ mtcars$wt, main = "Residuals vs wt")
+abline(h = mean(resid(finalFit)), lwd = 1)
+plot(resid(finalFit) ~ mtcars$qsec, main = "Residuals vs qsec")
+abline(h = mean(resid(finalFit)), lwd = 1)
+boxplot(resid(finalFit) ~ mtcars$am, main = "Residuals vs am")
+abline(h = mean(resid(finalFit)), lwd = 1)
+```
+
+### **6 : Conclusions**
+
+
+
+```{r}
+rbPal <- colorRampPalette(c('red','blue'))
+mtcars$Col <- rbPal(10)[as.numeric(cut(mtcars$am,breaks = 10))]
+plot(finalFit$fitted.values, mtcars$mpg,pch = 19, col  = mtcars$Col, xlab = "Fitted Values(am, qsec, wt)", ylab = "Miles per/(US) gallon", frame = FALSE, )
+abline(lm(mtcars$mpg ~ finalFit$fitted.values))
+legend(10, 30, legend=c("Automatic", "Manual"),
+       col=c("red", "blue"), pch = 19, cex=0.8)
+```
+
+Based on the above graph we can conclude on various aspects of fit that **manual transmission** is better for High **mpg** values
