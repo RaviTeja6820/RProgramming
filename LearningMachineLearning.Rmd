@@ -1,0 +1,161 @@
+---
+title: "Predicting type of Iris Flower"
+author: "Ravi Teja, RiteshDev, Bharath, Yeshwanth"
+date: "19/11/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Loading Packages
+
+```{r setup, include=FALSE}
+library(caret)
+```
+
+## Load the data
+
+
+```{r iris}
+data("iris")
+dataset <- iris
+```
+
+## Creating Validation
+
+You can also embed plots, for example:
+
+```{r validation, echo=FALSE}
+validation_index <- createDataPartition(dataset$Species, p = 0.80, list = FALSE)
+validation <- dataset[-validation_index,]
+dataset <- dataset[validation_index,]
+```
+
+## Summarizing the data
+
+### Dimensions of Data Set
+
+``` {r dimensions}
+dim(dataset)
+```
+
+### Types of Attributes
+
+```{r types}
+sapply(dataset, class)
+```
+
+### Sample Look at Data
+
+```{r samplelook}
+head(dataset)
+```
+
+### Levels of class
+
+```{r levels}
+levels(dataset$Species)
+```
+
+### Class Distribution
+
+```{r classdistribution}
+percentage <- prop.table(table(dataset$Species))*100
+cbind(freq = table(dataset$Species),percentage = percentage)
+```
+
+# Statistical Summary
+
+```{r Statistical Summary}
+summary(dataset)
+```
+
+## Visualization
+
+### Univariate Plots
+
+```{r univariateplots}
+x <- dataset[, 1:4]
+y <- dataset[,5]
+par(mfrow=c(1,4))
+for (i in 1:4) {
+  boxplot(x[,i], main = names(iris)[i])
+}
+plot(y)
+```
+
+### MultiVariate Plots
+
+```{r multivariateplots}
+featurePlot(x=x, y=y, plot = "ellipse")
+featurePlot(x=x, y=y, plot = "box")
+scales <- list(x = list(relation = "free"), y = list(relation = "free"))
+featurePlot(x=x, y=y, plot = "density", scales = scales)
+```
+
+## Testing Different Algorithms
+
+
+### X-Fold Cross Validation
+
+```{r crossvalidation}
+control <- trainControl(method = "cv", number = 10)
+metric <- "Accuracy"
+```
+
+### Build Models
+
+Let’s evaluate 5 different algorithms:
+
+#### Linear Discriminant Analysis (LDA)
+#### Classification and Regression Trees (CART).
+#### k-Nearest Neighbors (kNN).
+#### Support Vector Machines (SVM) with a linear kernel.
+#### Random Forest (RF)
+
+
+
+```{r models}
+set.seed(7)
+fit.lda <- train(Species~., data=dataset, method="lda", metric=metric, trControl=control)
+
+set.seed(7)
+fit.cart <- train(Species~., data=dataset, method="rpart", metric=metric, trControl=control)
+
+set.seed(7)
+fit.knn <- train(Species~., data=dataset, method="knn", metric=metric, trControl=control)
+
+set.seed(7)
+fit.svm <- train(Species~., data=dataset, method="svmRadial", metric=metric, trControl=control)
+
+set.seed(7)
+fit.rf <- train(Species~., data=dataset, method="rf", metric=metric, trControl=control)
+
+```
+
+### Select the Best Model
+
+```{r bestmodel}
+results <- resamples(list(lda=fit.lda, cart=fit.cart, knn=fit.knn, svm=fit.svm, rf=fit.rf))
+summary(results)
+dotplot(results)
+```
+
+The results for just LDA model can be summarized
+
+```{r lda}
+print(fit.lda)
+```
+
+## Making Predictions
+
+```{r predictions}
+predictions <- predict(fit.lda, validation)
+confusionMatrix(predictions, validation$Species)
+predictions
+predictions2 <- predict(fit.rf, validation)
+confusionMatrix(predictions2, validation$Species)
+acc.out <- confusionMatrix(predictions2, validation$Species)$overall["Accuracy"]
+```
+**`r acc.out`**
+Despite the small validation dataset but this result is in the expected margin 97% +/- 4% suggesting we have an accurate and reliable accurate model
