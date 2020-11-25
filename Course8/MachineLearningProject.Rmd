@@ -1,0 +1,221 @@
+---
+title: "Analysis on Accelometers using Machine Learning"
+author: "Ravi Teja L"
+date: "25/11/2020"
+output: html_document
+---
+
+# Executive Summary
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. The goal of this project is to use data from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants as they perform barbell lifts correctly and incorrectly 5 different ways.
+
+Six young healthy participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions:
+* Class A - exactly according to the specification
+* Class B - throwing the elbows to the front
+* Class C - liting the dumbbell only halfway
+* Class D - lowering the dumbbell only halfway
+* Class E - throwing the hips to the front
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. Researchers made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+
+### Reference
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human ’13). Stuttgart, Germany: ACM SIGCHI, 2013.
+
+### Data
+
+The training data for this project are available at:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available at:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+### Goal
+
+The goal of this project is to predict the manner in which subjects did the exercise. This is the “classe” variable in the training set. The model will use the other variables to predict with. This report describes:
+* how the model is built
+* use of cross validation
+* an estimate of expected out of sample error
+
+## **Loading the Libraries and Packages  **
+
+```{r library}
+library(caret)
+library(RColorBrewer)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+set.seed(1)
+```
+
+
+## **Loading the links**
+
+```{r loadLinks}
+train.url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test.url <-  "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+path <- paste(getwd(), sep="")
+
+train.file <- file.path(path, "pml-training.csv")
+test.file  <- file.path(path, "pml-testing.csv")
+```
+
+## **Download if file doesnot exist**
+
+```{r downloadData}
+if(!file.exists(train.file)) { download.file(train.url, dest.file=train.file) }
+if(!file.exists(test.file)) { download.file(test.url, destfile = test.file) }
+```
+
+## **Loading the Data**
+
+```{r loadData}
+train.data.raw <- read.csv(train.file, na.strings = c("NA", "#DIV/0", ""))
+test.data.raw <- read.csv(test.file, na.strings = c("NA", "#DIV/0", ""))
+```
+
+## **Summarizing the Data**
+
+### Dimensions of DataSet
+
+```{r dim}
+dim(train.data.raw)
+dim(test.data.raw)
+```
+
+### Types of Attributes
+
+```{r types}
+sapply(train.data.raw, class)
+```
+
+### Cleaning the DataSet
+
+```{r cleaning}
+# Drop first 7 columns as they're unnecessary for predicting
+
+train.data.clean1 <- train.data.raw[, 8:length(colnames(train.data.raw))]
+test.data.clean1 <- test.data.raw[, 8:length(colnames(test.data.raw))]
+
+# Drop columns with NA's
+
+train.data.clean1 <- train.data.clean1[, colSums(is.na(train.data.clean1)) == 0]
+test.data.clean1 <- test.data.clean1[, colSums(is.na(test.data.clean1)) == 0]
+test.data.clean1 <- test.data.clean1[, 1:length(names(test.data.clean1))-1]
+```
+
+### Sample look at the Data
+
+```{r sampleLook}
+head(train.data.clean1)
+```
+
+### Levels of Class
+
+```{r levels}
+levels(factor(train.data.clean1$classe))
+```
+
+### Class Distribution
+
+```{r distribution}
+percentage <- prop.table(table(train.data.clean1$classe))*100
+cbind(freq = table(train.data.clean1$classe), percentage = percentage)
+```
+
+## **Validating the Training Data**
+
+```{r validation}
+validation_index <- createDataPartition(train.data.clean1$classe, p = 0.70, list = FALSE)
+train.data.final <- train.data.clean1[validation_index,]
+validate.data.final <- train.data.clean1[-validation_index,]
+test.data.final <- test.data.clean1
+```
+
+## **Statistical Summary**
+
+```{r summary}
+summary(train.data.final)
+```
+
+## **Visualization**
+
+### Univariate plots
+
+```{r univariate}
+l <- 1:length(names(train.data.final))
+x <- train.data.final[,l-1]
+y <- train.data.final$classe
+plot(factor(y))
+```
+
+The DataSet has higher number of columns making it hard for univariate or multivariate analysis
+
+## **Testing Different Algorithms**
+
+### 5-fold Cross Validation
+
+```{r crossvalidation}
+control <- trainControl(method = "cv", number = 5)
+metric <- "Accuracy"
+```
+
+### Building Models
+
+```{r models}
+set.seed(7)
+lda.model <- train(classe~., data = train.data.final, method="lda", metric=metric, trControl=control)
+set.seed(7)
+rf.model <- train(classe~., data = train.data.final, method="rf", metric=metric, trControl=control)
+```
+
+## **Selecting the Best Model**
+
+```{r bestModel}
+results <- resamples(list(lda = lda.model, rf = rf.model))
+summary(results)
+dotplot(results)
+```
+
+The results for Random Forests can be summarized as it provides high accuracy.
+
+The training data set is used to fit a Random Forest model because it automatically selects important variables and is robust to correlated covariates & outliers in general.A Random forest is a way of reducing the variance.This typically produces better performance at the expense of bias and interpret-ability.
+
+```{r rf}
+print(rf.model)
+```
+
+
+## **Decision Tree Visualization**
+
+```{r warning = FALSE}
+astree <- rpart(classe~.,data=train.data.final,method = "class")
+fancyRpartPlot(astree)
+```
+
+## **Validation**
+
+### Validating the Training Data
+
+```{r validating}
+predictions <- predict(rf.model, validate.data.final)
+confusionmatrix <- confusionMatrix(predictions, as.factor(validate.data.final$classe))
+acc.out <-  confusionmatrix$overall["Accuracy"]
+ose <- 1-as.numeric(confusionmatrix$overall[1])
+confusionmatrix
+```
+
+The Model Fit is using the tested data is used against validation data.validated Data for the data are then compared to the original values.This allows forcasting the accuracy and overall out-of-sample error, which indicate how well the model will perform with other data.
+Provided the **`r acc.out`** accuracy and overall out of sample error being **`r ose`** we can safely assume we achieve desired results and that our model is can be dependable for prediction
+
+### Testing
+
+```{r testing}
+predictions <- predict(rf.model, test.data.final)
+predictions
+```
